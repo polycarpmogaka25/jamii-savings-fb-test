@@ -1,10 +1,12 @@
 <data name="AccountDS" serviceNamespace="http://ws.wso2.org/dataservice">
    <config id="default">
       <property name="driverClassName">org.h2.Driver</property>
-      <!-- ADDED: ;INIT=RUNSCRIPT FROM './repository/database/init.sql' -->
       <property name="url">jdbc:h2:file:./repository/database/jamiibank;INIT=RUNSCRIPT FROM './repository/database/init.sql'</property>
       <property name="username">sa</property>
       <property name="password"></property>
+      <property name="minPoolSize">5</property>
+      <property name="maxPoolSize">20</property>
+      <property name="validationQuery">SELECT 1</property>
    </config>
    <query id="GetAccountDetails" useConfig="default">
       <sql>SELECT account_number, status, balance, currency FROM accounts WHERE account_number = :accNumber</sql>

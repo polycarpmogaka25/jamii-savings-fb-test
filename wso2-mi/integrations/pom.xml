@@ -15,8 +15,7 @@
 
     <artifactId>jamii-savings</artifactId>
     <packaging>carbon/application</packaging>
-
-    <name>Jamii Bank Integration CAR</name>
+    <name>Jamii Bank Integration</name>
 
     <build>
         <plugins>
@@ -24,6 +23,7 @@
             <plugin>
                 <groupId>org.wso2.maven</groupId>
                 <artifactId>maven-car-plugin</artifactId>
+                <version>5.3.7</version>
                 <extensions>true</extensions>
             </plugin>
 

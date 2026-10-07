@@ -7,7 +7,21 @@
         <property name="STATUS" value="Backend Error or Malformed Input"/>
     </log>
 
-    <property name="HTTP_SC" value="400" scope="axis2" type="STRING"/>
+    <!-- Dynamic HTTP Status Code -->
+    <switch source="get-property('ERROR_CODE')">
+        <case regex="400">
+            <property name="HTTP_SC" value="400" scope="axis2" type="STRING"/>
+        </case>
+        <case regex="404">
+            <property name="HTTP_SC" value="404" scope="axis2" type="STRING"/>
+        </case>
+        <case regex="500">
+            <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+        </case>
+        <default>
+            <property name="HTTP_SC" value="500" scope="axis2" type="STRING"/>
+        </default>
+    </switch>
     <property name="messageType" value="application/json" scope="axis2" type="STRING"/>
 
     <payloadFactory media-type="json">

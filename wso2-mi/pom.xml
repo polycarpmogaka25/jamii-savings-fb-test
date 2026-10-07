@@ -13,7 +13,6 @@
     <version>1.0.0</version>
 
     <packaging>pom</packaging>
-
     <name>Jamii Bank Integrations</name>
 
     <modules>
