@@ -1,0 +1,43 @@
+openapi: 3.0.1
+info:
+  title: Jamii Customers API
+  description: Proxy API to fetch customer profile details.
+  version: 1.0.0
+paths:
+  /customers/{customerId}:
+    get:
+      summary: Get customer by ID
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  email:
+                    type: string
+                  phone:
+                    type: string
+        "400":
+          description: Bad Request / Timeout Fault
+        "404":
+          description: Customer Not Found
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://localhost:9443/oauth2/token
+          scopes: {}

@@ -1,0 +1,14 @@
+id:
+  providerName: admin
+  apiName: AccountsAPI
+  version: 1.0.0
+context: /accounts
+type: HTTP
+endpointConfig:
+  endpoint_type: http
+  production_endpoints:
+    url: http://host.docker.internal:8290/accounts  # Points to your accounts API
+policies:
+  - Unlimited  # The throttling tier
+status: PUBLISHED
+visibility: PUBLIC

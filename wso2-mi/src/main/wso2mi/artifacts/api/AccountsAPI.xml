@@ -1,0 +1,53 @@
+<api xmlns="http://ws.apache.org/ns/synapse" name="AccountsAPI" context="/accounts">
+    <resource methods="GET" uri-template="/{accountNumber}">
+        <inSequence>
+            <property name="accountNumber" expression="get-property('uri.var.accountNumber')"/>
+            <!-- Parameterized Call to Data Service -->
+            <call>
+                <endpoint>
+                    <http method="get" uri-template="http://localhost:8290/services/AccountDS/account/{uri.var.accountNumber}"/>
+                </endpoint>
+            </call>
+
+            <!-- Handle 404 if DB returns empty -->
+            <filter xpath="string-length(//Account/accountNumber) = 0">
+                <then>
+                    <property name="HTTP_SC" value="404" scope="axis2"/>
+                    <payloadFactory media-type="json">
+                        <format>{"error": "Account not found"}</format>
+                    </payloadFactory>
+                    <respond/>
+                </then>
+            </filter>
+
+            <!-- Envelope Transformation -->
+            <property name="SYSTEM_TIME" expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd\'T\'HH:mm:ss.SSSXXX')"/>
+            <payloadFactory media-type="json">
+                <format>
+                    {
+                    "accountNumber": "$1",
+                    "status": "$2",
+                    "balance": {
+                    "amount": $3,
+                    "currency": "$4"
+                    },
+                    "requestId": "$5",
+                    "timestamp": "$6"
+                    }
+                </format>
+                <args>
+                    <arg evaluator="xml" expression="//Account/accountNumber"/>
+                    <arg evaluator="xml" expression="//Account/status"/>
+                    <arg evaluator="xml" expression="//Account/balance"/>
+                    <arg evaluator="xml" expression="//Account/currency"/>
+                    <arg evaluator="xml" expression="get-property('MessageID')"/>
+                    <arg evaluator="xml" expression="get-property('SYSTEM_TIME')"/>
+                </args>
+            </payloadFactory>
+            <respond/>
+        </inSequence>
+        <faultSequence>
+            <sequence key="common-fault-sequence"/>
+        </faultSequence>
+    </resource>
+</api>

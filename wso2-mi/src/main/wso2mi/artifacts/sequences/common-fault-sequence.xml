@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="common-fault-sequence" trace="disable" xmlns="http://ws.apache.org/ns/synapse">
+    <!-- Global Error Handler -->
+    <log level="custom">
+        <property name="ERROR_CODE" expression="get-property('ERROR_CODE')"/>
+        <property name="ERROR_MESSAGE" expression="get-property('ERROR_MESSAGE')"/>
+        <property name="STATUS" value="Backend Error or Malformed Input"/>
+    </log>
+
+    <property name="HTTP_SC" value="400" scope="axis2" type="STRING"/>
+    <property name="messageType" value="application/json" scope="axis2" type="STRING"/>
+
+    <payloadFactory media-type="json">
+        <format>
+            {
+            "error": {
+            "code": "$1",
+            "message": "$2"
+            },
+            "requestId": "$3"
+            }
+        </format>
+        <args>
+            <arg evaluator="xml" expression="get-property('ERROR_CODE')"/>
+            <arg evaluator="xml" expression="get-property('ERROR_MESSAGE')"/>
+            <arg evaluator="xml" expression="get-property('MessageID')"/>
+        </args>
+    </payloadFactory>
+    <respond/>
+</sequence>

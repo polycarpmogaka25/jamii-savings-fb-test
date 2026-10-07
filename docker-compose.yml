@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+
+  wso2mi:
+    image: wso2/wso2mi:4.2.0
+    container_name: wso2-mi
+
+    ports:
+      - "8290:8290"
+      - "8253:8253"
+      - "9164:9164"
+
+    volumes:
+      - ./wso2-mi/integrations/target:/home/wso2carbon/wso2mi-4.2.0/repository/deployment/server/carbonapps
+      - ./db-scripts:/home/wso2carbon/wso2mi-4.2.0/repository/database
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    networks:
+      - jamii-network
+
+networks:
+  jamii-network:
+    driver: bridge

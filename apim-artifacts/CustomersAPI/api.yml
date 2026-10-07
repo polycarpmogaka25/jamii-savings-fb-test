@@ -1,0 +1,14 @@
+id:
+  providerName: admin
+  apiName: CustomersAPI
+  version: 1.0.0
+context: /customers
+type: HTTP
+endpointConfig:
+  endpoint_type: http
+  production_endpoints:
+    url: http://host.docker.internal:8290/customers
+policies:
+  - Unlimited
+status: PUBLISHED
+visibility: PUBLIC

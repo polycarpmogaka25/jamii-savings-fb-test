@@ -1,0 +1,32 @@
+<api xmlns="http://ws.apache.org/ns/synapse" name="CustomersAPI" context="/customers">
+    <resource methods="GET" uri-template="/{customerId}">
+        <inSequence>
+            <!-- Header Manipulation: Inject Correlation ID -->
+            <property name="X-Correlation-ID" expression="get-property('MessageID')" scope="transport"/>
+            <!-- Strip internal authorization header -->
+            <property name="Authorization" action="remove" scope="transport"/>
+
+            <log level="custom">
+                <property name="ACTION" value="Calling Mock Customer Backend"/>
+                <!-- Masking Customer ID for privacy -->
+                <property name="CUSTOMER_ID" expression="fn:concat(fn:substring(get-property('uri.var.customerId'), 1, 1), '***')"/>
+            </log>
+
+            <call>
+                <endpoint>
+                    <http method="get" uri-template="https://jsonplaceholder.typicode.com/users/{uri.var.customerId}">
+                        <!-- Timeout configuration -->
+                        <timeout>
+                            <duration>3000</duration>
+                            <responseAction>fault</responseAction>
+                        </timeout>
+                    </http>
+                </endpoint>
+            </call>
+            <respond/>
+        </inSequence>
+        <faultSequence>
+            <sequence key="common-fault-sequence"/>
+        </faultSequence>
+    </resource>
+</api>

@@ -1,0 +1,14 @@
+id:
+  providerName: admin
+  apiName: LoansAPI
+  version: 1.0.0
+context: /loans
+type: HTTP
+endpointConfig:
+  endpoint_type: http
+  production_endpoints:
+    url: http://host.docker.internal:8290/loans
+policies:
+  - Silver
+status: PUBLISHED
+visibility: PUBLIC

@@ -1,0 +1,42 @@
+openapi: 3.0.1
+info:
+  title: Jamii Accounts API
+  version: 1.0.0
+paths:
+  /accounts/{accountNumber}/balance:
+    get:
+      summary: Get account balance
+      parameters:
+        - name: accountNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountNumber:
+                    type: string
+                  status:
+                    type: string
+                  balance:
+                    type: object
+                  requestId:
+                    type: string
+                  timestamp:
+                    type: string
+        "404":
+          description: Account Not Found
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://localhost:9443/oauth2/token
+          scopes: {}

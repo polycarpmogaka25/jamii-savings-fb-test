@@ -1,0 +1,24 @@
+<data name="AccountDS" serviceNamespace="http://ws.wso2.org/dataservice">
+   <config id="default">
+      <property name="driverClassName">org.h2.Driver</property>
+      <!-- ADDED: ;INIT=RUNSCRIPT FROM './repository/database/init.sql' -->
+      <property name="url">jdbc:h2:file:./repository/database/jamiibank;INIT=RUNSCRIPT FROM './repository/database/init.sql'</property>
+      <property name="username">sa</property>
+      <property name="password"></property>
+   </config>
+   <query id="GetAccountDetails" useConfig="default">
+      <sql>SELECT account_number, status, balance, currency FROM accounts WHERE account_number = :accNumber</sql>
+      <param name="accNumber" sqlType="STRING" paramType="SCALAR"/>
+      <result element="Account" rowName="">
+         <element column="account_number" name="accountNumber" xsdType="string"/>
+         <element column="status" name="status" xsdType="string"/>
+         <element column="balance" name="balance" xsdType="double"/>
+         <element column="currency" name="currency" xsdType="string"/>
+      </result>
+   </query>
+   <resource method="GET" path="/account/{accNumber}">
+      <call-query href="GetAccountDetails">
+         <with-param name="accNumber" query-param="accNumber"/>
+      </call-query>
+   </resource>
+</data>

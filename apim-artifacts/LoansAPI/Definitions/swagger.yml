@@ -1,0 +1,71 @@
+openapi: 3.0.1
+info:
+  title: Jamii Loans API
+  description: Checks loan eligibility by transforming JSON requests to a legacy SOAP backend.
+  version: 1.0.0
+paths:
+  /loans/eligibility:
+    post:
+      summary: Check loan eligibility
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - income
+                - debt
+              properties:
+                income:
+                  type: integer
+                  example: 50000
+                debt:
+                  type: integer
+                  example: 10000
+      responses:
+        "200":
+          description: Eligibility processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eligibilityScore:
+                    type: integer
+                  status:
+                    type: string
+                    example: "PROCESSED"
+        "400":
+          description: Malformed Input (Missing income or debt)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        "500":
+          description: Internal Backend (SOAP) Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        requestId:
+          type: string
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://localhost:9443/oauth2/token
+          scopes: {}
