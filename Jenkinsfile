@@ -1,67 +1,68 @@
 pipeline {
-    agent any
-
-    environment {
-        MI_PROJECT_PATH = 'wso2-mi'
-        APIM_PROJECT_PATH = 'apim-artifacts'
-        WSO2_MI_HOME = '/opt/wso2mi'
-        APICTL_ENV = 'dev'
+ agent any
+ options {
+  timestamps(); disableConcurrentBuilds()
+ }
+ environment {
+  APIM_ENV = 'dev'; MI_DEPLOY_DIR = '/opt/wso2mi/repository/deployment/server/carbonapps'
+ }
+ stages {
+  stage('Checkout') {
+   steps {
+    checkout scm
+   }
+  }
+  stage('Validate sources') {
+   steps {
+    sh 'python3 -m unittest discover -s tests -v'
+   }
+  }
+  stage('Build MI') {
+   steps {
+    dir('wso2-mi') {
+     sh 'mvn -B clean install'
     }
-
-    stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Build MI Artifacts') {
-            steps {
-                dir("${MI_PROJECT_PATH}") {
-                    sh 'mvn clean install -Dmaven.test.skip=true'
-                }
-            }
-        }
-
-        stage('Test MI Integrations') {
-            steps {
-                echo 'Running Synapse Unit Tests & Postman Integrations...'
-                sh 'echo "Tests passed successfully"'
-            }
-        }
-
-        stage('Deploy MI Composite App') {
-            steps {
-                script {
-                    def carFile = findFiles(glob: "${MI_PROJECT_PATH}/**/target/*.car")[0]
-                    echo "Deploying ${carFile.name} to MI..."
-
-                    // Copy to deployment directory
-                    sh "cp ${carFile.path} ${WSO2_MI_HOME}/repository/deployment/server/carbonapps/"
-                }
-            }
-        }
-
-        stage('Deploy APIM APIs') {
-            steps {
-                dir("${APIM_PROJECT_PATH}") {
-                    sh "apictl import-api -f AccountsAPI -e ${APICTL_ENV} --update -k"
-                    sh "apictl import-api -f CustomersAPI -e ${APICTL_ENV} --update -k"
-                    sh "apictl import-api -f LoansAPI -e ${APICTL_ENV} --update -k"
-
-                }
-            }
-        }
+   }
+  }
+  stage('Stage artifacts') {
+   steps {
+    sh 'test "$(find wso2-mi/integrations/target -maxdepth 1 -name "*.car" | wc -l)" -eq 1'; archiveArtifacts artifacts: 'wso2-mi/integrations/target/*.car', fingerprint: true
+   }
+  }
+  stage('Deploy MI dev') {
+   steps {
+    sh 'set -eu; CAR=$(find wso2-mi/integrations/target -maxdepth 1 -name "*.car" | head -1); cp "$CAR" "$MI_DEPLOY_DIR/"'
+   }
+  }
+  stage('Smoke MI dev') {
+   steps {
+    sh 'bash tests/smoke.sh'
+   }
+  }
+  stage('Deploy APIM dev') {
+   steps {
+    withCredentials([usernamePassword(credentialsId: 'apim-dev', usernameVariable: 'APIM_USER', passwordVariable: 'APIM_PASS')]) {
+     sh '''
+        set -eu
+        apictl login "$APIM_ENV" -u "$APIM_USER" -p "$APIM_PASS" -k
+        for api in AccountsAPI CustomersAPI LoansAPI; do
+          apictl import-api -f "apim-artifacts/$api" -e "$APIM_ENV" --update -k
+        done
+        '''
     }
-
-    post {
-        failure {
-            echo "Pipeline failed. Check build logs. Deployment halted."
-            cleanWs()
-        }
-        success {
-            echo "Jamii Bank Integrations successfully deployed to ${APICTL_ENV} environment."
-            cleanWs()
-        }
-    }
+   }
+  }
+  stage('Production gate') {
+   when {
+    branch 'main'
+   } steps {
+    input message: 'Promote validated release to production?', ok: 'Approve'
+   }
+  }
+ }
+ post {
+  failure {
+   echo 'Deployment failed; inspect the stage logs. Earlier deployments may require rollback.'
+  }
+ }
 }

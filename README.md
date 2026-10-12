@@ -1,56 +1,24 @@
-# Jamii Savings - WSO2 Integration
+# Jamii Savings — WSO2 MI 4.4 integration assignment
 
-This repository contains the Micro Integrator (MI) services, API Manager (APIM) definitions, and CI/CD Jenkins pipeline for Jamii Savings Bank.
+## Architecture
+Three MI APIs are packaged in one CAR: H2-backed accounts, JSONPlaceholder customer proxy, and JSON-to-SOAP calculator adapter. API Manager is the intended OAuth2 gateway. H2 is embedded and initialized from `database/init.sql` using parameterized queries. This is **demonstration code**, not banking production software.
 
-## Architecture Decisions & Trade-offs
-*   **Database:** An embedded H2 database enables the MI Data Service to run self-contained in any environment without external dependencies.
-*   **Mock Backends:**
-    *   *(Proxy):* Uses `jsonplaceholder.typicode.com/users` to simulate a customer profile backend for reliable REST/JSON responses.
-    *   *(SOAP-to-REST):* Uses the public `http://www.dneonline.com/calculator.asmx` SOAP service. Applicant income and debt are passed to the `Add` operation to simulate an eligibility score calculation.
-*   **Error Handling:** A global fault sequence intercepts all transport, timeout, and SOAP faults, transforming them into a standard `{"error": {"code": "...", "message": "..."}}` JSON schema to prevent internal system leaks.
-*   **API Product Grouping:** All three APIs are grouped into `JamiiBank_Core_Product`. Consumers subscribe once and access Accounts, Customers, and Loans APIs via a single application token.
+## Run locally
+1. Install JDK and Maven compatible with MI 4.4; install WSO2 MI 4.4 and the H2 JDBC driver in `<MI_HOME>/lib`.
+2. Copy `database/schema.sql`, `seed.sql`, and `init.sql` to `<MI_HOME>/repository/database/`; the file-based JDBC URL is relative to MI's working directory.
+3. Run `cd wso2-mi && mvn clean install`. Confirm the `.car` file is a valid ZIP and contains the three APIs, data service and shared fault sequence.
+4. Copy the generated `.car` to `<MI_HOME>/repository/deployment/server/carbonapps/`, start MI, and verify startup logs.
+5. Run `python3 -m unittest discover -s tests -v` and `bash tests/smoke.sh` (requires curl and a running MI).
+6. In API Manager, create/publish APIs from the OpenAPI files and configure MI endpoint URLs, OAuth2 security, and distinct throttling policies; use API Controller exports for CI-managed imports.
 
-## What I'd Do Differently With More Time
-1.  **Security:** Implement HashiCorp Vault integration in MI for database credentials instead of plain text/secure vault properties.
-2.  **Observability:** Integrate Jaeger/Zipkin via WSO2 OpenTelemetry extensions for distributed tracing across APIM, MI, and backend services.
-3.  **Testing:** Add automated Postman/Newman collections into the Jenkins pipeline to validate integration health prior to APIM deployment.
+## Mapping and trade-offs
+JSONPlaceholder `/users/{id}` supplies public mock customer profiles; only numeric IDs are accepted. DNE Online SOAP Calculator `Subtract(income,debt)` yields disposable-income proxy; decision is `ELIGIBLE` when result >= 10000, otherwise `NOT_ELIGIBLE`. **This is not a real creditworthiness assessment.** SOAP service availability is not guaranteed. H2 embedded mode is simple but not suitable for clustered production workloads.
 
-## Assumptions
-*   Jenkins has the WSO2 `apictl` CLI installed and configured with target environment credentials.
-*   WSO2 MI and APIM run locally via Docker Compose on standard ports (8290, 9443).
-*   The Data Service relies on inline queries rather than separate nested queries to minimize artifact count.
+## Error policy
+All APIs use a shared `error.code`, `error.message`, `requestId`, `timestamp` structure. Accounts: 400 invalid number, 404 unknown account, 503 DB failure. Customers: 400 invalid ID, 404 unknown customer, 502/503 backend errors. Loans: 400 invalid fields, 502 SOAP fault, 503 unavailable. Logging records event names and IDs without account/customer PII.
 
-## Local Environment Setup
-1.  **Build MI Artifacts:**
-    Use the modern WSO2 code-first Maven plugin to build the Composite Application.
-    ```bash
-    cd wso2-mi
-    mvn clean install
-    cd ..
-    ```
-2.  **Start Infrastructure:**
-    Run Docker Compose. The generated `.car` artifact and H2 database script map automatically via volumes.
-    ```bash
-    docker-compose up -d --force-recreate
-    ```
-3.  **Deploy APIM Artifacts:**
-    Configure the local environment and deploy via the WSO2 API Controller (`apictl`).
-    ```bash
-    apictl add-env dev --apim https://localhost:9443
-    apictl login dev -u admin -p admin -k
-    
-    apictl import-api -f ./apim-artifacts/AccountsAPI -e dev -k
-    apictl import-api -f ./apim-artifacts/CustomersAPI -e dev -k
-    apictl import-api -f ./apim-artifacts/LoansAPI -e dev -k
-    apictl import-api-product -f ./apim-artifacts/JamiiBankProduct -e dev -k
-    ```
-4.  **Test via Developer Portal:**
-    Navigate to `https://localhost:9443/devportal`. Under **API Products**, select **JamiiBank Core**, subscribe, generate a Production OAuth2 token, and execute requests.
+## Outstanding integration checks
+**Not runtime-verified:** Confirm MI 4.4 artifact packaging, DataServiceCall schema, H2 URL/driver, timestamp ISO formatting, MessageID UUID semantics, SOAP wire format and public backend connectivity. Validate APIM project metadata against an actual `apictl export-api` before CI import. The repository does not yet contain an exported API Product or deployable custom gateway mediation policy. The Docker image tag and deployment paths must be checked for your MI distribution. Jenkins production gate is conceptual; production deployment and automatic rollback are not implemented.
 
-## Enterprise Integration Patterns
-
-### Aggregation API
-When aggregating a Customer Profile and Account Balance in parallel (using `<clone>` or `<call>` mediators in MI), a timeout in one backend should return partial data (e.g., `{"customer": {...}, "account": null, "warnings": ["Account service degraded"]}`). Failing the entire request outright negates the resilience benefits of microservice architecture.
-
-### Message Queue Integration
-Message Queue integrations are strictly asynchronous. Unlike HTTP REST APIs that can immediately return 4xx/5xx status codes, a malformed JMS/Kafka message cannot return an error to the producer. It must be routed to a Dead Letter Channel (DLC) for manual intervention while the consumer acknowledges the initial message to prevent infinite poison-pill retry loops.
+## More time
+Add real CI integration containers, schema/OpenAPI contract tests, idempotent APIM API Product export, custom gateway policy, deployment rollback, real OAuth2 tests, and secured secret management. API consumers discover the published APIs in the APIM Developer Portal, create an application, subscribe, and generate OAuth2 credentials.
