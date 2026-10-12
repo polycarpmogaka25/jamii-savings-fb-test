@@ -8,13 +8,13 @@ paths:
     get:
       summary: Get customer by ID
       parameters:
-        - name: customerId
-          in: path
-          required: true
-          schema:
-            type: string
+      - name: customerId
+        in: path
+        required: true
+        schema:
+          type: string
       responses:
-        "200":
+        '200':
           description: Successful response
           content:
             application/json:
@@ -29,10 +29,30 @@ paths:
                     type: string
                   phone:
                     type: string
-        "400":
-          description: Bad Request / Timeout Fault
-        "404":
-          description: Customer Not Found
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Backend unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -41,3 +61,25 @@ components:
         clientCredentials:
           tokenUrl: https://localhost:9443/oauth2/token
           scopes: {}
+  schemas:
+    ErrorResponse:
+      type: object
+      required:
+      - error
+      - requestId
+      - timestamp
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        requestId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+security:
+- OAuth2: []

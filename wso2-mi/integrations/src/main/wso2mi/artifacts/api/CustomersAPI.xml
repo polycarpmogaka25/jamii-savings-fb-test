@@ -1,36 +1,15 @@
 <api xmlns="http://ws.apache.org/ns/synapse" name="CustomersAPI" context="/customers">
-    <resource methods="GET" uri-template="/{customerId}">
-        <inSequence>
-            <!-- Header Manipulation: Inject Correlation ID -->
-            <property name="X-Correlation-ID" expression="get-property('MessageID')" scope="transport"/>
-            <!-- Strip internal authorization header -->
-            <property name="Authorization" action="remove" scope="transport"/>
-
-            <log level="custom">
-                <property name="ACTION" value="Calling Mock Customer Backend"/>
-                <!-- Masking Customer ID for privacy -->
-                <property name="CUSTOMER_ID" expression="fn:concat(fn:substring(get-property('uri.var.customerId'), 1, 1), '***')"/>
-            </log>
-
-            <call>
-                <endpoint>
-                    <http method="get" uri-template="https://jsonplaceholder.typicode.com/users/{uri.var.customerId}">
-                        <!-- Timeout configuration -->
-                        <timeout>
-                            <duration>3000</duration>
-                            <responseAction>fault</responseAction>
-                        </timeout>
-                        <suspendOnFailure>
-                            <initialDuration>1000</initialDuration>
-                            <progressionFactor>2.0</progressionFactor>
-                        </suspendOnFailure>
-                    </http>
-                </endpoint>
-            </call>
-            <respond/>
-        </inSequence>
-        <faultSequence>
-            <sequence key="common-fault-sequence"/>
-        </faultSequence>
-    </resource>
+ <resource methods="GET" uri-template="/{customerId}"><inSequence>
+  <property name="requestId" expression="get-property('transport','X-Correlation-ID')"/>
+  <filter source="get-property('requestId')" regex=".+"><then/><else><property name="requestId" expression="get-property('MessageID')"/></else></filter>
+  <property name="customerId" expression="get-property('uri.var.customerId')"/>
+  <filter source="get-property('customerId')" regex="^[1-9][0-9]{0,5}$"><then/><else><property name="PUBLIC_STATUS" value="400"/><property name="PUBLIC_CODE" value="INVALID_CUSTOMER_ID"/><property name="PUBLIC_MESSAGE" value="Customer ID must be a positive integer"/><sequence key="common-fault-sequence"/></else></filter>
+  <property name="X-Correlation-ID" expression="get-property('requestId')" scope="transport"/><property name="Authorization" action="remove" scope="transport"/>
+  <log level="custom"><property name="event" value="customers.backend_call"/><property name="requestId" expression="get-property('requestId')"/></log>
+  <call><endpoint><http method="get" uri-template="https://jsonplaceholder.typicode.com/users/{uri.var.customerId}"><timeout><duration>5000</duration><responseAction>fault</responseAction></timeout></http></endpoint></call>
+  <filter source="get-property('axis2','HTTP_SC')" regex="404"><then><property name="PUBLIC_STATUS" value="404"/><property name="PUBLIC_CODE" value="CUSTOMER_NOT_FOUND"/><property name="PUBLIC_MESSAGE" value="Customer not found"/><sequence key="common-fault-sequence"/></then><else/></filter>
+  <filter source="get-property('axis2','HTTP_SC')" regex="5[0-9][0-9]"><then><property name="PUBLIC_STATUS" value="502"/><property name="PUBLIC_CODE" value="CUSTOMER_BACKEND_FAILURE"/><property name="PUBLIC_MESSAGE" value="Customer service unavailable"/><sequence key="common-fault-sequence"/></then><else/></filter>
+  <property name="X-Correlation-ID" expression="get-property('requestId')" scope="transport"/><property name="Server" action="remove" scope="transport"/><property name="Via" action="remove" scope="transport"/>
+  <log level="custom"><property name="event" value="customers.response"/><property name="requestId" expression="get-property('requestId')"/></log><respond/>
+ </inSequence><faultSequence><property name="PUBLIC_STATUS" value="503"/><property name="PUBLIC_CODE" value="CUSTOMER_BACKEND_UNAVAILABLE"/><property name="PUBLIC_MESSAGE" value="Customer backend unavailable"/><sequence key="common-fault-sequence"/></faultSequence></resource>
 </api>

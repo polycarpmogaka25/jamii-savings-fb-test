@@ -6,12 +6,15 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="jamiibank-integrations-car" />
+        <module name="wso2-mi" />
+        <module name="jamii-savings" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
+      <module name="jamiibank-integrations-car" target="1.5" />
       <module name="JamiiBankCompositeExporter" target="1.5" />
       <module name="JamiiBankConfigs" target="1.5" />
+      <module name="wso2-mi-parent" target="1.5" />
     </bytecodeTargetLevel>
   </component>
 </project>

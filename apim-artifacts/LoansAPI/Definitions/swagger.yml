@@ -1,7 +1,8 @@
 openapi: 3.0.1
 info:
   title: Jamii Loans API
-  description: Checks loan eligibility by transforming JSON requests to a legacy SOAP backend.
+  description: Checks loan eligibility by transforming JSON requests to a legacy SOAP
+    backend.
   version: 1.0.0
 paths:
   /loans/eligibility:
@@ -14,8 +15,8 @@ paths:
             schema:
               type: object
               required:
-                - income
-                - debt
+              - income
+              - debt
               properties:
                 income:
                   type: integer
@@ -24,7 +25,7 @@ paths:
                   type: integer
                   example: 10000
       responses:
-        "200":
+        '200':
           description: Eligibility processed successfully
           content:
             application/json:
@@ -35,15 +36,33 @@ paths:
                     type: integer
                   status:
                     type: string
-                    example: "PROCESSED"
-        "400":
-          description: Malformed Input (Missing income or debt)
+                    example: PROCESSED
+        '400':
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        "500":
+        '500':
           description: Internal Backend (SOAP) Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '502':
+          description: Upstream error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Backend unavailable
           content:
             application/json:
               schema:
@@ -52,6 +71,10 @@ components:
   schemas:
     ErrorResponse:
       type: object
+      required:
+      - error
+      - requestId
+      - timestamp
       properties:
         error:
           type: object
@@ -62,6 +85,9 @@ components:
               type: string
         requestId:
           type: string
+        timestamp:
+          type: string
+          format: date-time
   securitySchemes:
     OAuth2:
       type: oauth2
@@ -69,3 +95,5 @@ components:
         clientCredentials:
           tokenUrl: https://localhost:9443/oauth2/token
           scopes: {}
+security:
+- OAuth2: []
