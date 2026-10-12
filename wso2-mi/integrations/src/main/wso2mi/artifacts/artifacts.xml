@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<artifacts>
+    <artifact name="AccountsAPI" groupId="com.jamiibank.api" version="1.0.0" type="synapse/api" serverRole="EnterpriseServiceBus">
+        <file>api/AccountsAPI.xml</file>
+    </artifact>
+    <artifact name="CustomersAPI" groupId="com.jamiibank.api" version="1.0.0" type="synapse/api" serverRole="EnterpriseServiceBus">
+        <file>api/CustomersAPI.xml</file>
+    </artifact>
+    <artifact name="LoansAPI" groupId="com.jamiibank.api" version="1.0.0" type="synapse/api" serverRole="EnterpriseServiceBus">
+        <file>api/LoansAPI.xml</file>
+    </artifact>
+    <artifact name="AccountDS" groupId="com.jamiibank.dataservice" version="1.0.0" type="service/dataservice" serverRole="EnterpriseServiceBus">
+        <file>data-services/AccountDS.dbs</file>
+    </artifact>
+    <artifact name="common-fault-sequence" groupId="com.jamiibank.sequence" version="1.0.0" type="synapse/sequence" serverRole="EnterpriseServiceBus">
+        <file>sequences/common-fault-sequence.xml</file>
+    </artifact>
+</artifacts>

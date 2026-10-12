@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<artifact name="common-fault-sequence" groupId="com.jamiibank.api" version="1.0.0" type="synapse/sequence" serverRole="EnterpriseServiceBus">
+    <file>common-fault-sequence.xml</file>
+</artifact>
