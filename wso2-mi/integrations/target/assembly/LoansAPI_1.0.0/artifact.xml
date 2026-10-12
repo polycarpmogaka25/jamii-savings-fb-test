@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<artifact name="LoansAPI" groupId="com.jamiibank.api" version="1.0.0" type="synapse/api" serverRole="EnterpriseServiceBus">
-    <file>LoansAPI.xml</file>
-</artifact>

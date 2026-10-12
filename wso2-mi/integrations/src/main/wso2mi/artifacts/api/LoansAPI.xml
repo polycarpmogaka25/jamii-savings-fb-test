@@ -1,81 +1,117 @@
 <api xmlns="http://ws.apache.org/ns/synapse" name="LoansAPI" context="/loans">
-    <resource methods="POST" uri-template="/eligibility">
-        <inSequence>
-            <!-- Check for Malformed Input (400) -->
-            <filter xpath="not(//income) or not(//debt)">
-                <then>
-                    <property name="ERROR_CODE" value="400"/>
-                    <property name="ERROR_MESSAGE" value="Malformed input: income and debt are required."/>
-                    <sequence key="common-fault-sequence"/>
-                </then>
-            </filter>
+ <resource methods="POST" uri-template="/eligibility">
+  <inSequence>
+   <property name="requestId" expression="get-property('MessageID')"/>
+   <property name="income" expression="json-eval($.income)"/>
+   <property name="debt" expression="json-eval($.debt)"/>
 
-            <!-- Store JSON variables -->
-            <property name="reqIncome" expression="json-eval($.income)"/>
-            <property name="reqDebt" expression="json-eval($.debt)"/>
+   <!-- Income Validation -->
+   <filter source="get-property('income')" regex="^(0|[1-9][0-9]{0,8})$">
+    <then/>
+    <else>
+     <property name="PUBLIC_STATUS" value="400"/>
+     <property name="PUBLIC_CODE" value="INVALID_LOAN_REQUEST"/>
+     <property name="PUBLIC_MESSAGE" value="income and debt must be nonnegative integers up to 999999999"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </else>
+   </filter>
 
-            <!-- Transform to SOAP Payload -->
-            <payloadFactory media-type="xml">
-                <format>
-                    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
-                        <soapenv:Header/>
-                        <soapenv:Body>
-                            <tem:Add>
-                                <tem:intA>$1</tem:intA>
-                                <tem:intB>$2</tem:intB>
-                            </tem:Add>
-                        </soapenv:Body>
-                    </soapenv:Envelope>
-                </format>
-                <args>
-                    <arg evaluator="xml" expression="get-property('reqIncome')"/>
-                    <arg evaluator="xml" expression="get-property('reqDebt')"/>
-                </args>
-            </payloadFactory>
+   <!-- Debt Validation -->
+   <filter source="get-property('debt')" regex="^(0|[1-9][0-9]{0,8})$">
+    <then/>
+    <else>
+     <property name="PUBLIC_STATUS" value="400"/>
+     <property name="PUBLIC_CODE" value="INVALID_LOAN_REQUEST"/>
+     <property name="PUBLIC_MESSAGE" value="income and debt must be nonnegative integers up to 999999999"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </else>
+   </filter>
 
-            <header name="Action" value="http://tempuri.org/Add"/>
+   <log level="custom">
+    <property name="event" value="loans.backend_call"/>
+    <property name="requestId" expression="get-property('requestId')"/>
+   </log>
 
-            <call>
-                <endpoint>
-                    <address uri="http://www.dneonline.com/calculator.asmx" format="soap11">
-                        <timeout>
-                            <duration>5000</duration>
-                            <responseAction>fault</responseAction>
-                        </timeout>
-                        <suspendOnFailure>
-                            <initialDuration>1000</initialDuration>
-                            <progressionFactor>2.0</progressionFactor>
-                        </suspendOnFailure>
-                    </address>
-                </endpoint>
-            </call>
+   <payloadFactory media-type="xml">
+    <format><tem:Subtract xmlns:tem="http://tempuri.org/"><tem:intA>$1</tem:intA><tem:intB>$2</tem:intB></tem:Subtract></format>
+    <args>
+     <arg evaluator="xml" expression="get-property('income')"/>
+     <arg evaluator="xml" expression="get-property('debt')"/>
+    </args>
+   </payloadFactory>
 
-            <!-- Check for SOAP Fault -->
-            <filter xpath="$body/soapenv:Fault" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
-                <then>
-                    <property name="ERROR_CODE" value="500"/>
-                    <property name="ERROR_MESSAGE" expression="$body/soapenv:Fault/faultstring/text()"/>
-                    <sequence key="common-fault-sequence"/>
-                </then>
-            </filter>
+   <property name="SOAPAction" value="http://tempuri.org/Subtract" scope="transport"/>
 
-            <!-- Transform SOAP Response back to JSON -->
-            <payloadFactory media-type="json">
-                <format>
-                    {
-                    "eligibilityScore": $1,
-                    "status": "PROCESSED"
-                    }
-                </format>
-                <args>
-                    <arg evaluator="xml" expression="//tem:AddResult" xmlns:tem="http://tempuri.org/"/>
-                </args>
-            </payloadFactory>
-            <property name="messageType" value="application/json" scope="axis2"/>
-            <respond/>
-        </inSequence>
-        <faultSequence>
-            <sequence key="common-fault-sequence"/>
-        </faultSequence>
-    </resource>
+   <call>
+    <endpoint>
+     <address uri="http://www.dneonline.com/calculator.asmx" format="soap11">
+      <timeout>
+       <duration>5000</duration>
+       <responseAction>fault</responseAction>
+      </timeout>
+     </address>
+    </endpoint>
+   </call>
+
+   <!-- Check for SOAP Fault -->
+   <filter xpath="boolean(//*[local-name()='Fault'])">
+    <then>
+     <property name="PUBLIC_STATUS" value="502"/>
+     <property name="PUBLIC_CODE" value="SOAP_BACKEND_FAULT"/>
+     <property name="PUBLIC_MESSAGE" value="Eligibility provider returned a fault"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </then>
+    <else/>
+   </filter>
+
+   <!-- Check Response Structure -->
+   <filter xpath="count(//*[local-name()='SubtractResult']) = 1">
+    <then/>
+    <else>
+     <property name="PUBLIC_STATUS" value="502"/>
+     <property name="PUBLIC_CODE" value="SOAP_INVALID_RESPONSE"/>
+     <property name="PUBLIC_MESSAGE" value="Eligibility provider returned an invalid response"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </else>
+   </filter>
+
+   <property name="score" expression="//*[local-name()='SubtractResult']/text()"/>
+
+   <filter xpath="number(get-property('score')) &gt;= 10000">
+    <then>
+     <property name="decision" value="ELIGIBLE"/>
+    </then>
+    <else>
+     <property name="decision" value="NOT_ELIGIBLE"/>
+    </else>
+   </filter>
+
+   <payloadFactory media-type="json">
+    <format>{"eligibilityScore":$1,"decision":"$2","requestId":"$3","timestamp":"$4"}</format>
+    <args>
+     <arg evaluator="xml" expression="get-property('score')"/>
+     <arg evaluator="xml" expression="get-property('decision')"/>
+     <arg evaluator="xml" expression="get-property('requestId')"/>
+     <arg evaluator="xml" expression="get-property('SYSTEM_DATE')"/>
+    </args>
+   </payloadFactory>
+
+   <property name="messageType" value="application/json" scope="axis2"/>
+   <log level="custom">
+    <property name="event" value="loans.response"/>
+    <property name="requestId" expression="get-property('requestId')"/>
+   </log>
+   <respond/>
+  </inSequence>
+  <faultSequence>
+   <property name="PUBLIC_STATUS" value="503"/>
+   <property name="PUBLIC_CODE" value="SOAP_BACKEND_UNAVAILABLE"/>
+   <property name="PUBLIC_MESSAGE" value="Eligibility provider unavailable"/>
+   <sequence key="common-fault-sequence"/>
+  </faultSequence>
+ </resource>
 </api>

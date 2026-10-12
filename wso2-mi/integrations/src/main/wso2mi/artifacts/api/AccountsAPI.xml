@@ -1,102 +1,71 @@
 <api xmlns="http://ws.apache.org/ns/synapse" name="AccountsAPI" context="/accounts">
-    <resource methods="GET" uri-template="/{accountNumber}">
-        <inSequence>
-            <property name="accountNumber" expression="get-property('uri.var.accountNumber')"/>
-            <!-- Optimized Data Service Call -->
-            <dataServiceCall serviceName="AccountDS">
-                <source type="inline"/>
-                <operations type="single">
-                    <operation name="GetAccountDetails">
-                        <with-param name="accNumber" expression="get-property('uri.var.accountNumber')"/>
-                    </operation>
-                </operations>
-                <target type="body"/>
-            </dataServiceCall>
+ <resource methods="GET" uri-template="/{accountNumber}/balance">
+  <inSequence>
+   <property name="requestId" expression="get-property('MessageID')"/>
+   <property name="accountNumber" expression="get-property('uri.var.accountNumber')"/>
 
-            <!-- Handle 404 if DB returns empty -->
-            <filter xpath="not(//Account)">
-                <then>
-                    <property name="HTTP_SC" value="404" scope="axis2"/>
-                    <payloadFactory media-type="json">
-                        <format>{"error": "Account not found"}</format>
-                    </payloadFactory>
-                    <respond/>
-                </then>
-            </filter>
+   <!-- Account Number Validation -->
+   <filter source="get-property('accountNumber')" regex="^(ACC[0-9]{6}|[0-9]{6,20})$">
+    <then/>
+    <else>
+     <property name="PUBLIC_STATUS" value="400"/>
+     <property name="PUBLIC_CODE" value="INVALID_ACCOUNT_NUMBER"/>
+     <property name="PUBLIC_MESSAGE" value="Account number must be ACC followed by 6 digits or 6 to 20 digits"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </else>
+   </filter>
 
-            <!-- Envelope Transformation -->
-            <property name="SYSTEM_TIME" expression="get-property('SYSTEM_DATE', 'yyyy-MM-dd\'T\'HH:mm:ss.SSSXXX')"/>
-            <payloadFactory media-type="json">
-                <format>
-                    {
-                    "accountNumber": "$1",
-                    "status": "$2",
-                    "balance": {
-                    "amount": $3,
-                    "currency": "$4"
-                    },
-                    "requestId": "$5",
-                    "timestamp": "$6"
-                    }
-                </format>
-                <args>
-                    <arg evaluator="xml" expression="//Account/accountNumber"/>
-                    <arg evaluator="xml" expression="//Account/status"/>
-                    <arg evaluator="xml" expression="//Account/balance"/>
-                    <arg evaluator="xml" expression="//Account/currency"/>
-                    <arg evaluator="xml" expression="get-property('MessageID')"/>
-                    <arg evaluator="xml" expression="get-property('SYSTEM_TIME')"/>
-                </args>
-            </payloadFactory>
-            <respond/>
-        </inSequence>
-        <faultSequence>
-            <sequence key="common-fault-sequence"/>
-        </faultSequence>
+   <log level="custom">
+    <property name="event" value="accounts.request"/>
+    <property name="requestId" expression="get-property('requestId')"/>
+   </log>
+
+   <!-- UPDATED: Targeting the REST Resource path in the data service -->
+   <dataServiceCall serviceName="AccountDS">
+    <source type="inline"/>
+    <resource method="GET" path="account/{accNumber}">
+     <param name="accNumber" expression="get-property('accountNumber')"/>
     </resource>
-    <resource methods="GET" uri-template="/{accountNumber}/balance">
-        <inSequence>
-            <property name="accountNumber" expression="get-property('uri.var.accountNumber')"/>
-            <dataServiceCall serviceName="AccountDS">
-                <source type="inline"/>
-                <operations type="single">
-                    <operation name="GetAccountDetails">
-                        <with-param name="accNumber" expression="get-property('uri.var.accountNumber')"/>
-                    </operation>
-                </operations>
-                <target type="body"/>
-            </dataServiceCall>
+    <target type="body"/>
+   </dataServiceCall>
 
-            <filter xpath="not(//Account)">
-                <then>
-                    <property name="HTTP_SC" value="404" scope="axis2"/>
-                    <payloadFactory media-type="json">
-                        <format>{"error": "Account not found"}</format>
-                    </payloadFactory>
-                    <respond/>
-                </then>
-            </filter>
+   <!-- Check if Account Exists -->
+   <filter xpath="count(//*[local-name()='Account']) &gt; 0">
+    <then/>
+    <else>
+     <property name="PUBLIC_STATUS" value="404"/>
+     <property name="PUBLIC_CODE" value="ACCOUNT_NOT_FOUND"/>
+     <property name="PUBLIC_MESSAGE" value="Account not found"/>
+     <sequence key="common-fault-sequence"/>
+     <drop/>
+    </else>
+   </filter>
 
-            <payloadFactory media-type="json">
-                <format>
-                    {
-                    "accountNumber": "$1",
-                    "balance": {
-                    "amount": $2,
-                    "currency": "$3"
-                    }
-                    }
-                </format>
-                <args>
-                    <arg evaluator="xml" expression="//Account/accountNumber"/>
-                    <arg evaluator="xml" expression="//Account/balance"/>
-                    <arg evaluator="xml" expression="//Account/currency"/>
-                </args>
-            </payloadFactory>
-            <respond/>
-        </inSequence>
-        <faultSequence>
-            <sequence key="common-fault-sequence"/>
-        </faultSequence>
-    </resource>
+   <payloadFactory media-type="json">
+    <format>{"accountNumber":"$1","status":"$2","balance":{"amount":$3,"currency":"$4"},"requestId":"$5","timestamp":"$6"}</format>
+    <args>
+     <arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='accountNumber']/text()"/>
+     <arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='status']/text()"/>
+     <arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='amount']/text()"/>
+     <arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='currency']/text()"/>
+     <arg evaluator="xml" expression="get-property('requestId')"/>
+     <arg evaluator="xml" expression="get-property('SYSTEM_DATE')"/>
+    </args>
+   </payloadFactory>
+
+   <property name="messageType" value="application/json" scope="axis2"/>
+   <log level="custom">
+    <property name="event" value="accounts.response"/>
+    <property name="requestId" expression="get-property('requestId')"/>
+   </log>
+   <respond/>
+  </inSequence>
+  <faultSequence>
+   <property name="PUBLIC_STATUS" value="503"/>
+   <property name="PUBLIC_CODE" value="DATABASE_UNAVAILABLE"/>
+   <property name="PUBLIC_MESSAGE" value="Account database unavailable"/>
+   <sequence key="common-fault-sequence"/>
+  </faultSequence>
+ </resource>
 </api>

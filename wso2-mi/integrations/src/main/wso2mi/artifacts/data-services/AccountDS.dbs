@@ -1,26 +1,5 @@
-<data name="AccountDS" serviceNamespace="http://ws.wso2.org/dataservice">
-   <config id="default">
-      <property name="driverClassName">org.h2.Driver</property>
-      <property name="url">jdbc:h2:file:./repository/database/jamiibank;INIT=RUNSCRIPT FROM './repository/database/init.sql'</property>
-      <property name="username">sa</property>
-      <property name="password"></property>
-      <property name="minPoolSize">5</property>
-      <property name="maxPoolSize">20</property>
-      <property name="validationQuery">SELECT 1</property>
-   </config>
-   <query id="GetAccountDetails" useConfig="default">
-      <sql>SELECT account_number, status, balance, currency FROM accounts WHERE account_number = :accNumber</sql>
-      <param name="accNumber" sqlType="STRING" paramType="SCALAR"/>
-      <result element="Account" rowName="">
-         <element column="account_number" name="accountNumber" xsdType="string"/>
-         <element column="status" name="status" xsdType="string"/>
-         <element column="balance" name="balance" xsdType="double"/>
-         <element column="currency" name="currency" xsdType="string"/>
-      </result>
-   </query>
-   <resource method="GET" path="/account/{accNumber}">
-      <call-query href="GetAccountDetails">
-         <with-param name="accNumber" query-param="accNumber"/>
-      </call-query>
-   </resource>
+<data name="AccountDS" serviceNamespace="http://jamii.savings/ds" transports="http https local" xmlns="http://ws.wso2.org/dataservice">
+ <config id="H2"><property name="driverClassName">org.h2.Driver</property><property name="url">jdbc:h2:file:./repository/database/jamiibank;INIT=RUNSCRIPT FROM './repository/database/init.sql'</property><property name="username">sa</property><property name="password"></property></config>
+ <query id="GetAccountDetails" useConfig="H2"><sql>SELECT account_number,status,balance,currency FROM accounts WHERE account_number = :accNumber</sql><param name="accNumber" sqlType="STRING"/><result element="Accounts" rowName="Account"><element name="accountNumber" column="ACCOUNT_NUMBER"/><element name="status" column="STATUS"/><element name="balance" column="BALANCE"/><element name="currency" column="CURRENCY"/></result></query>
+ <operation name="GetAccountDetails"><call-query href="GetAccountDetails"><with-param name="accNumber" query-param="accNumber"/></call-query></operation>
 </data>
