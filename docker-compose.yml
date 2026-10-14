@@ -6,7 +6,7 @@ services:
       - "8290:8290"
       - "8253:8253"
     volumes:
-      - ./database:/home/wso2carbon/wso2mi-4.4.0/repository/database
+      - ./database:/home/wso2carbon/wso2mi-4.4.0/database
       - ./wso2-mi/integrations/src/main/wso2mi/artifacts/api:/home/wso2carbon/wso2mi-4.4.0/repository/deployment/server/synapse-configs/default/api:ro
       - ./wso2-mi/integrations/src/main/wso2mi/artifacts/sequences:/home/wso2carbon/wso2mi-4.4.0/repository/deployment/server/synapse-configs/default/sequences:ro
       - ./wso2-mi/integrations/src/main/wso2mi/artifacts/data-services:/home/wso2carbon/wso2mi-4.4.0/repository/deployment/server/dataservices:ro

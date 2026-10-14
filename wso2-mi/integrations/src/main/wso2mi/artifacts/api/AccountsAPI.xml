@@ -5,7 +5,10 @@
    <property name="accountNumber" expression="get-property('uri.var.accountNumber')"/>
    <filter source="get-property('accountNumber')" regex="^(ACC[0-9]{6}|[0-9]{6,20})$"><then/><else><property name="PUBLIC_STATUS" value="400"/><property name="PUBLIC_CODE" value="INVALID_ACCOUNT_NUMBER"/><property name="PUBLIC_MESSAGE" value="Account number must contain 6 to 20 digits"/><sequence key="common-fault-sequence"/></else></filter>
    <log level="custom"><property name="event" value="accounts.request"/><property name="requestId" expression="get-property('requestId')"/></log>
-   <dataServiceCall serviceName="AccountDS"><source type="inline"/><operations type="single"><operation name="GetAccountDetails"><param name="accNumber" expression="get-property('accountNumber')"/></operation></operations><target type="body"/></dataServiceCall>
+   <dataServiceCall serviceName="AccountDS">
+    <source type="inline"/><operations type="single">
+    <operation name="GetAccountDetails">
+     <param name="accNumber" expression="get-property('accountNumber')"/></operation></operations><target type="body"/></dataServiceCall>
    <filter xpath="count(//*[local-name()='Account']) &gt; 0"><then/><else><property name="PUBLIC_STATUS" value="404"/><property name="PUBLIC_CODE" value="ACCOUNT_NOT_FOUND"/><property name="PUBLIC_MESSAGE" value="Account not found"/><sequence key="common-fault-sequence"/></else></filter>
    <payloadFactory media-type="json"><format>{"accountNumber":"$1","status":"$2","balance":{"amount":$3,"currency":"$4"},"requestId":"$5","timestamp":"$6"}</format><args><arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='accountNumber']/text()"/><arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='status']/text()"/><arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='balance']/text()"/><arg evaluator="xml" expression="//*[local-name()='Account']/*[local-name()='currency']/text()"/><arg evaluator="xml" expression="get-property('requestId')"/><arg evaluator="xml" expression="get-property('SYSTEM_DATE')"/></args></payloadFactory>
    <property name="messageType" value="application/json" scope="axis2"/>
